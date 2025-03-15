@@ -51,7 +51,7 @@ This Python script automates the setup of a Django project, including the creati
 1. **Clone the Repository**:
    ```bash
    git clone git@github.com:CollinsMuiruri/django-starter.git
-   cd django-setup-script
+   cd django-starter
    ```
 
 2. **Run the Script**:
