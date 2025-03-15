@@ -4,60 +4,86 @@ import sys
 import shutil
 import time
 
+# Function to check if Django is installed and use its color system
+def get_color_style():
+    try:
+        from django.core.management.color import color_style
+        return color_style()
+    except ImportError:
+        # Fallback: Define a dummy style with no colors
+        class DummyStyle:
+            def __getattr__(self, name):
+                return lambda text: text  # Return text as-is (no colors)
+        return DummyStyle()
+
+# Initialize color style (initially without Django colors)
+style = get_color_style()
+
+# Function to update the color style after Django is installed
+def update_color_style():
+    global style
+    style = get_color_style()
+
 # Function to check if we are in a virtual environment
 def check_venv():
     # Check if Python is installed
     python_executable = shutil.which("python") or shutil.which("python3")
     if not python_executable:
-        print("Error: Python is not installed or not found in the system PATH.")
+        print(style.ERROR("Error: Python is not installed or not found in the system PATH."))
         sys.exit(1)
 
     # Check if the current Python executable is in a virtual environment
     if sys.prefix == sys.base_prefix:
-        print("Not in a virtual environment. Creating one...")
+        print(style.HTTP_NOT_MODIFIED("Not in a virtual environment. Creating one..."))
         try:
             # Create a virtual environment
             subprocess.check_call([python_executable, "-m", "venv", "venv"])
             # Determine the activation script based on the platform
             activate_script = "venv/bin/activate" if sys.platform != "win32" else "venv\\Scripts\\activate"
-            print(f"Virtual environment created. Run 'source {activate_script}' to activate it and rerun the script.")
+            print(style.SUCCESS(f"Virtual environment created. Run 'source {activate_script}' to activate it and rerun the script."))
         except subprocess.CalledProcessError as e:
-            print(f"Failed to create virtual environment: {e}")
+            print(style.ERROR(f"Failed to create virtual environment: {e}"))
             sys.exit(1)
         sys.exit(1)
     else:
-        print("Already in a virtual environment.")
-
+        print(style.SUCCESS("Already in a virtual environment."))
 
 # Function to install dependencies and generate requirements.txt
 def install_dependencies():
-    print("Installing Django and Django Unfold...")
+    print(style.HTTP_NOT_MODIFIED("Installing Django and Django Unfold..."))
     subprocess.check_call([sys.executable, "-m", "pip", "install", "django", "django-unfold"])
     pip_freeze_req = subprocess.check_output([sys.executable, "-m", "pip", "freeze"]).decode('utf-8')
-    print (pip_freeze_req)
+    print(style.SUCCESS(pip_freeze_req))
     with open("requirements.txt", "w") as file:
         file.write(f"{pip_freeze_req}")
+    print(style.SUCCESS("Dependencies installed and requirements.txt generated."))
+
+    # Update the color style after installing Django
+    update_color_style()
+    print(style.SUCCESS("Switched to Django's color system for output."))
 
 # Function to create Django project and app
 def create_project_and_app():
     project_name = input("\nEnter the Django project name: ")
     app_name = input("Enter the name of the first app: ")
 
-    print(f"Creating Django project: {project_name}...")
+    print(style.HTTP_NOT_MODIFIED(f"Creating Django project: {project_name}..."))
     subprocess.check_call([sys.executable, "-m", "django", "startproject", project_name])
+    print(style.SUCCESS(f"Project '{project_name}' created successfully."))
 
-    print(f"Creating Django app: {app_name}...")
+    print(style.HTTP_NOT_MODIFIED(f"Creating Django app: {app_name}..."))
     os.chdir(project_name)
     subprocess.check_call([sys.executable, "manage.py", "startapp", app_name])
+    print(style.SUCCESS(f"App '{app_name}' created successfully."))
 
     # Add the app to INSTALLED_APPS in settings.py
     settings_path = os.path.join(project_name, 'settings.py')
 
-    print(f"Looking for settings.py at: {settings_path}")
+    print(style.HTTP_NOT_MODIFIED(f"Looking for settings.py at: {settings_path}"))
     
     # Check if settings.py exists
     if not os.path.exists(settings_path):
-        raise FileNotFoundError(f"Could not find settings.py at {settings_path}. Please check the project structure.")
+        raise FileNotFoundError(style.ERROR(f"Could not find settings.py at {settings_path}. Please check the project structure."))
 
     with open(settings_path, 'r') as file:
         lines = file.readlines()
@@ -76,9 +102,9 @@ def create_project_and_app():
     with open(settings_path, 'w') as file:
         file.writelines(lines)
 
-    print(f"Added '{app_name}' to INSTALLED_APPS in settings.py.")
+    print(style.SUCCESS(f"Added '{app_name}' to INSTALLED_APPS in settings.py."))
 
- # Create models.py content
+    # Create models.py content
     models_content = """
 from django.db import models
 
@@ -95,8 +121,7 @@ class TestModel(models.Model):
     models_path = os.path.join(app_name, 'models.py')
     with open(models_path, 'w') as file:
         file.write(models_content)
-
-    print(f"Created models.py in {app_name}.")
+    print(style.SUCCESS(f"Created models.py in {app_name}."))
 
     # Create admin.py content
     admin_content = """
@@ -136,11 +161,10 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     admin_path = os.path.join(app_name, 'admin.py')
     with open(admin_path, 'w') as file:
         file.write(admin_content)
-
-    print(f"Created admin.py in {app_name}.")
+    print(style.SUCCESS(f"Created admin.py in {app_name}."))
 
     # Configure Django Unfold as the first item in INSTALLED_APPS
-    print("Configuring Django Unfold...")
+    print(style.HTTP_NOT_MODIFIED("Configuring Django Unfold..."))
     settings_path = os.path.join(project_name, "settings.py")
     with open(settings_path, "r") as file:
         lines = file.readlines()
@@ -159,9 +183,10 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
         file.write(f"    'SITE_TITLE': '{project_name} Dashboard',\n")
         file.write("    'SITE_ICON': None,\n")
         file.write("}\n")
+    print(style.SUCCESS("Django Unfold configured successfully."))
 
     # Create templates folder and index.html
-    print("Creating templates folder and index.html...")
+    print(style.HTTP_NOT_MODIFIED("Creating templates folder and index.html..."))
     templates_path = os.path.join(app_name, "templates", app_name)
     os.makedirs(templates_path, exist_ok=True)
     index_html_path = os.path.join(templates_path, "index.html")
@@ -235,32 +260,23 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
     </ul>
 </body>
 </html>
-
 """
 
     with open(index_html_path, "w") as file:
         file.write(index_html_content)
-        # file.write("<html lang='en'>\n")
-        # file.write("<head>\n")
-        # file.write("    <meta charset='UTF-8'>\n")
-        # file.write("    <meta name='viewport' content='width=device-width, initial-scale=1.0'>\n")
-        # file.write("    <title>Index Page</title>\n")
-        # file.write("</head>\n")
-        # file.write("<body>\n")
-        # file.write("    <h1>Default Index Page by Conto</h1>\n")
-        # file.write("</body>\n")
-        # file.write("</html>\n")
+    print(style.SUCCESS("Templates folder and index.html created successfully."))
 
     # Update views.py to render the index.html template
-    print("Updating views.py to render the index.html template...")
+    print(style.HTTP_NOT_MODIFIED("Updating views.py to render the index.html template..."))
     app_views_path = os.path.join(app_name, "views.py")
     with open(app_views_path, "w") as file:
         file.write("from django.shortcuts import render\n\n")
         file.write("def index(request):\n")
         file.write(f"    return render(request, '{app_name}/index.html')\n")
+    print(style.SUCCESS("views.py updated successfully."))
 
     # Create urls.py in the app with a default path to index view
-    print("Creating urls.py in the app...")
+    print(style.HTTP_NOT_MODIFIED("Creating urls.py in the app..."))
     app_urls_path = os.path.join(app_name, "urls.py")
     with open(app_urls_path, "w") as file:
         file.write("from django.urls import path\n")
@@ -268,9 +284,10 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
         file.write("urlpatterns = [\n")
         file.write("    path('', views.index, name='index'),\n")
         file.write("]\n")
+    print(style.SUCCESS("urls.py created successfully."))
 
     # Include the app's urls.py in the project's urls.py
-    print("Including app's urls in the project...")
+    print(style.HTTP_NOT_MODIFIED("Including app's urls in the project..."))
     project_urls_path = os.path.join(project_name, "urls.py")
     with open(project_urls_path, "r") as file:
         lines = file.readlines()
@@ -280,10 +297,10 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
                 file.write("from django.urls import path, include\n")
             elif line.startswith("urlpatterns = ["):
                 file.write(line)
-                # file.write(f"    path('admin/', admin.site.urls),\n")  # Ensure admin URLs are included
                 file.write(f"    path('', include('{app_name}.urls')),\n")
             else:
                 file.write(line)
+    print(style.SUCCESS("App's URLs included in the project."))
 
     os.chdir("..")
 
@@ -291,28 +308,28 @@ class GroupAdmin(BaseGroupAdmin, ModelAdmin):
 def create_superuser(project_name):
     create_superuser_choice = input("Do you want to create a superuser? (yes/no): ").lower()
     if create_superuser_choice == "yes" or "y":
-        print("Making migrations...")
+        print(style.HTTP_NOT_MODIFIED("Making migrations..."))
         os.chdir(project_name)
         
         # Run makemigrations
         subprocess.check_call([sys.executable, "manage.py", "makemigrations"])
+        print(style.SUCCESS("Migrations created successfully."))
         
         # Run migrate
-        print("Applying migrations...")
+        print(style.HTTP_NOT_MODIFIED("Applying migrations..."))
         subprocess.check_call([sys.executable, "manage.py", "migrate"])
+        print(style.SUCCESS("Migrations applied successfully."))
         
         # Create superuser
-        print("Creating superuser...")
+        print(style.HTTP_NOT_MODIFIED("Creating superuser..."))
         subprocess.check_call([sys.executable, "manage.py", "createsuperuser"], stdin=sys.stdin)
+        print(style.SUCCESS("Superuser created successfully."))
         
         # Return to the parent directory
         os.chdir("..")
     else:
-        print("Great,")
-        time.sleep(1)
-        print("Great, exiting now...")
+        print(style.HTTP_NOT_MODIFIED("Great, exiting now..."))
         time.sleep(2)
-
 
 # Main function
 def main():
@@ -321,7 +338,7 @@ def main():
     create_project_and_app()
     project_name = input("Enter the Django project name again (for superuser creation): ")
     create_superuser(project_name)
-    print("Django project setup is complete!")
+    print(style.SUCCESS("Django project setup is complete!"))
 
 if __name__ == "__main__":
     main()
