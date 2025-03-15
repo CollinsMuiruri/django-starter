@@ -50,7 +50,7 @@ This Python script automates the setup of a Django project, including the creati
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/django-setup-script.git
+   git clone https://github.com/CollinsMuiruri/django-setup-script.git
    cd django-setup-script
    ```
 
